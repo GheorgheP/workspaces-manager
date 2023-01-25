@@ -1,0 +1,81 @@
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: Montserrat, sans-serif;
+}
+
+body {
+  @apply bg-cinder;
+
+  min-height: 100vh;
+  display: flex;
+  padding: 0;
+  margin: 0;
+}
+
+#root {
+  width: 100%;
+  display: flex;
+  flex: 1;
+}
+
+.frame {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 15px;
+}
+
+.workspace-frame-wrapper {
+  display: grid;
+  grid-template-columns: 2px 1fr 2px;
+  grid-template-rows: 2px 1fr 2px;
+  grid-template-areas:
+    "nw n ne"
+    "w . e"
+    "sw s se";
+}
+
+.workspace-frame-wrapper .react-resizable-handle-sw {
+  grid-area: sw;
+  cursor: sw-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-s {
+  grid-area: s;
+  cursor: s-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-se {
+  grid-area: se;
+  cursor: se-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-e {
+  grid-area: e;
+  cursor: e-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-nw {
+  grid-area: nw;
+  cursor: nw-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-n {
+  grid-area: n;
+  cursor: n-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-ne {
+  grid-area: ne;
+  cursor: ne-resize;
+}
+
+.workspace-frame-wrapper .react-resizable-handle-w {
+  grid-area: w;
+  cursor: w-resize;
+}
