@@ -1,11 +1,11 @@
 import { useSelector } from "react-redux";
-import { State } from "../store/types/State";
+import { State } from "../../store/types/State";
 import { WorkspaceWithItems } from "./WorkspaceWithItems";
 import { EmptyWorkspace } from "./EmptyWorkspace";
 import { ReactElement } from "react";
-import { Loading } from "./Loading";
-import { unreachable } from "../utils/expcetions";
-import { WorkspaceId } from "../store/types/WorkspaceId";
+import { Loading } from "../Loading";
+import { unreachable } from "../../utils/expcetions";
+import { WorkspaceId } from "../../store/types/WorkspaceId";
 
 export function Workspace({ id }: { id: WorkspaceId }): ReactElement {
   const hasFrames = useSelector(
@@ -28,7 +28,7 @@ export function Workspace({ id }: { id: WorkspaceId }): ReactElement {
   );
 
   if (hasFrames === "loading") return <Loading />;
-  if (hasFrames === "empty") return <EmptyWorkspace />;
+  if (hasFrames === "empty") return <EmptyWorkspace id={id} />;
   if (hasFrames === "with-items") return <WorkspaceWithItems id={id} />;
 
   unreachable(hasFrames);

@@ -130,6 +130,27 @@ export const updateWidgetConfig = (
 });
 // endregion
 
+// region AddWidgets
+export interface AddWidgets {
+  type: "AddWidgets";
+  payload: {
+    workspaceId: WorkspaceId;
+    widgets: Array<{
+      type: WidgetType;
+      position?: {
+        x: number;
+        y: number;
+      };
+    }>;
+  };
+}
+
+export const addWidgets = (payload: AddWidgets["payload"]): AddWidgets => ({
+  type: "AddWidgets",
+  payload,
+});
+// endregion
+
 export type Actions =
   | LoadSuccess
   | LoadError
@@ -137,4 +158,5 @@ export type Actions =
   | RemoveFrame
   | RemoveWidget
   | SetActiveWidget
-  | UpdateFrameConfig;
+  | UpdateFrameConfig
+  | AddWidgets;

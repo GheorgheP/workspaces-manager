@@ -2,17 +2,15 @@ import { FrameId } from "../store/types/Frame";
 import { ComponentProps, forwardRef, memo, ReactElement } from "react";
 import classNames from "classnames";
 import { useDispatch, useSelector } from "react-redux";
-import { isReady, State } from "../store/types/State";
 import { WorkspaceId } from "../store/types/WorkspaceId";
 import {
   removeFrame,
   setActiveFrame,
   updateWidgetConfig,
 } from "../store/types/Actions";
-import { Widget } from "../store/types/Widget";
 import { WidgetComponent } from "./Widgets";
 import { selectActiveWidget, selectFrameZIndex } from "../store/selectors";
-import { FrameTab } from "./Widgets/FrameTab";
+import { Tabs } from "./Tabs";
 
 export interface FrameWrapperProps extends ComponentProps<"div"> {
   workspaceId: WorkspaceId;
@@ -57,7 +55,7 @@ const Frame = memo(({ frameId, workspaceId }: FrameProps): ReactElement => {
   return (
     <div className="w-[100%] flex flex-col">
       <div className="bg-bunker flex rounded-t-[8px]">
-        <FrameTabs workspaceId={workspaceId} frameId={frameId} />
+        <Tabs workspaceId={workspaceId} frameId={frameId} />
         <div data-draggable-handle="" className="grow cursor-grab" />
         <button onClick={() => dispatch(removeFrame({ workspaceId, frameId }))}>
           X
@@ -69,36 +67,6 @@ const Frame = memo(({ frameId, workspaceId }: FrameProps): ReactElement => {
     </div>
   );
 });
-
-interface FrameTabProps {
-  workspaceId: WorkspaceId;
-  frameId: FrameId;
-}
-
-function FrameTabs({ frameId, workspaceId }: FrameTabProps): ReactElement {
-  const tabs = useSelector(
-    (s: State) => {
-      return isReady(s)
-        ? Object.values(
-            s.payload.workspaces[workspaceId]?.frames[frameId]?.widgets ?? {}
-          )
-            .sort((a, b) => (b.order < a.order ? -1 : 1))
-            .map((w) => s.payload.workspaces[workspaceId].widgets[w.id])
-            .filter((w): w is Widget => !!w)
-            .map((w) => w.id)
-        : [];
-    },
-    (a, b) => a.length === b.length && a.every((v, i) => v === b[i])
-  );
-
-  return (
-    <div className="flex">
-      {tabs.map((id) => (
-        <FrameTab workspaceId={workspaceId} frameId={frameId} widgetId={id} />
-      ))}
-    </div>
-  );
-}
 
 interface FrameContentProps {
   workspaceId: WorkspaceId;

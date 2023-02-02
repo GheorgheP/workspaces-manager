@@ -3,10 +3,11 @@ import { Actions } from "./types/Actions";
 import { unreachable } from "../utils/expcetions";
 import { WorkspaceId } from "./types/WorkspaceId";
 import { Workspace } from "./types/Workspace";
-import { Frame, FrameId } from "./types/Frame";
-import { Widget, WidgetId } from "./types/Widget";
+import { Frame, FrameId, newFrameId } from "./types/Frame";
+import { newWidgetId, Widget, WidgetId } from "./types/Widget";
 import produce from "immer";
 import { groupBy } from "lodash";
+import { getWidgetDefaultConfig, getWidgetSize } from "./utils";
 
 const initialState: Loading = {
   type: "Loading",
@@ -18,74 +19,74 @@ const initialState: Loading = {
 export function reducer(state: State = initialState, action: Actions): State {
   switch (action.type) {
     case "LoadSuccess":
-      return {
-        type: "Ready",
-        payload: {
-          workspaces: action.payload.reduce(
-            (acc: Record<WorkspaceId, Workspace>, item, i) => {
-              acc[item.id] = {
-                id: item.id,
-                title: item.title,
-                order: (i + 1) / (action.payload.length + 1),
-                widgets: item.widgets.reduce(
-                  (acc: Record<WidgetId, Widget>, item) => {
-                    acc[item.id] = item;
-                    return acc;
-                  },
-                  {}
-                ),
-                frames: item.frames.reduce(
-                  (acc: Record<FrameId, Frame>, frame, i) => {
-                    acc[frame.id] = {
-                      id: frame.id,
-                      config: frame.config,
-                      order: (i + 1) / (item.frames.length + 1),
-                      activeWidget: frame.widgets[0],
-                      widgets: frame.widgets.reduce(
-                        (
-                          acc: Record<
-                            WidgetId,
-                            { id: WidgetId; order: number }
-                          >,
-                          id,
-                          i
-                        ) => {
-                          acc[id] = {
-                            id,
-                            order: (i + 1) / (frame.widgets.length + 1),
-                          };
-                          return acc;
-                        },
-                        {}
-                      ),
-                    };
+      return state.type === "Loading"
+        ? {
+            type: "Ready",
+            payload: {
+              workspaces: action.payload.reduce(
+                (acc: Record<WorkspaceId, Workspace>, item, i) => {
+                  acc[item.id] = {
+                    id: item.id,
+                    title: item.title,
+                    order: (i + 1) / (action.payload.length + 1),
+                    widgets: item.widgets.reduce(
+                      (acc: Record<WidgetId, Widget>, item) => {
+                        acc[item.id] = item;
+                        return acc;
+                      },
+                      {}
+                    ),
+                    frames: item.frames.reduce(
+                      (acc: Record<FrameId, Frame>, frame, i) => {
+                        acc[frame.id] = {
+                          id: frame.id,
+                          config: frame.config,
+                          order: (i + 1) / (item.frames.length + 1),
+                          activeWidget: frame.widgets[0],
+                          widgets: frame.widgets.reduce(
+                            (
+                              acc: Record<
+                                WidgetId,
+                                { id: WidgetId; order: number }
+                              >,
+                              id,
+                              i
+                            ) => {
+                              acc[id] = {
+                                id,
+                                order: (i + 1) / (frame.widgets.length + 1),
+                              };
+                              return acc;
+                            },
+                            {}
+                          ),
+                        };
 
-                    return acc;
-                  },
-                  {}
-                ),
-              };
-              return acc;
+                        return acc;
+                      },
+                      {}
+                    ),
+                  };
+                  return acc;
+                },
+                {}
+              ),
+              widgetTypes: state.payload.widgetTypes,
             },
-            {}
-          ),
-          widgetTypes: state.payload.widgetTypes,
-        },
-      };
+          }
+        : state;
     case "LoadError":
-      return {
-        type: "LoadError",
-        payload: {
-          widgetTypes: state.payload.widgetTypes,
-        },
-      };
-    case "SetActiveFrame": {
-      switch (state.type) {
-        case "Loading":
-        case "LoadError":
-          return state;
-        case "Ready": {
-          return produce(state, (draft) => {
+      return state.type === "Loading"
+        ? {
+            type: "LoadError",
+            payload: {
+              widgetTypes: state.payload.widgetTypes,
+            },
+          }
+        : state;
+    case "SetActiveFrame":
+      return isReady(state)
+        ? produce(state, (draft) => {
             const workspace =
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
@@ -109,17 +110,11 @@ export function reducer(state: State = initialState, action: Actions): State {
                 frame.order = (i + 1) / (frames.length + 1);
               });
             }
-          });
-        }
-      }
-    }
+          })
+        : state;
     case "RemoveFrame":
-      switch (state.type) {
-        case "Loading":
-        case "LoadError":
-          return state;
-        case "Ready": {
-          return produce(state, (draft) => {
+      return isReady(state)
+        ? produce(state, (draft) => {
             const workspace =
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
@@ -141,16 +136,11 @@ export function reducer(state: State = initialState, action: Actions): State {
               });
 
             delete workspace.frames[action.payload.frameId];
-          });
-        }
-      }
-    case "RemoveWidget": {
-      switch (state.type) {
-        case "Loading":
-        case "LoadError":
-          return state;
-        case "Ready": {
-          return produce(state, (draft) => {
+          })
+        : state;
+    case "RemoveWidget":
+      return isReady(state)
+        ? produce(state, (draft) => {
             const workspace =
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
@@ -175,17 +165,11 @@ export function reducer(state: State = initialState, action: Actions): State {
             ) {
               delete workspace.widgets[widget.id];
             }
-          });
-        }
-      }
-    }
-    case "SetActiveWidget": {
-      switch (state.type) {
-        case "Loading":
-        case "LoadError":
-          return state;
-        case "Ready": {
-          return produce(state, (draft) => {
+          })
+        : state;
+    case "SetActiveWidget":
+      return isReady(state)
+        ? produce(state, (draft) => {
             const workspace =
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
@@ -199,11 +183,9 @@ export function reducer(state: State = initialState, action: Actions): State {
             if (frame.activeWidget !== widget) {
               frame.activeWidget = widget;
             }
-          });
-        }
-      }
-    }
-    case "UpdateFrameConfig": {
+          })
+        : state;
+    case "UpdateFrameConfig":
       return isReady(state)
         ? produce(state, (draft) => {
             const workspace =
@@ -216,7 +198,52 @@ export function reducer(state: State = initialState, action: Actions): State {
             frame.config = action.payload.config;
           })
         : state;
-    }
+    case "AddWidgets":
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace =
+              draft.payload.workspaces[action.payload.workspaceId];
+            if (!workspace) return;
+
+            const minOrder = Math.min(
+              ...Object.values(workspace.frames).map((w) => w.order)
+            );
+
+            action.payload.widgets.reduce(
+              (prevOrder, { type, position }, i) => {
+                const frameId = newFrameId();
+                const widgetId = newWidgetId();
+                const order = prevOrder / 2;
+                const size = getWidgetSize(type);
+                const config =
+                  Object.values(workspace.widgets).find((w) => w.type === type)
+                    ?.config ?? getWidgetDefaultConfig(type);
+
+                workspace.widgets[widgetId] = { id: widgetId, type, config };
+                workspace.frames[frameId] = {
+                  id: frameId,
+                  order,
+                  widgets: {
+                    [widgetId]: {
+                      id: widgetId,
+                      order: 0.5,
+                    },
+                  },
+                  activeWidget: widgetId,
+                  config: {
+                    width: size.minWidth,
+                    height: size.minHeight,
+                    x: position?.x ?? i * 5,
+                    y: position?.y ?? i * 5,
+                  },
+                };
+
+                return order;
+              },
+              minOrder
+            );
+          })
+        : state;
     default:
       unreachable(action);
       return state;
