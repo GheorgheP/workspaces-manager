@@ -34,7 +34,7 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
       title: "Workspace 1",
       widgets: [
         {
-          id: "widget-1" as WidgetId,
+          id: "w-news" as WidgetId,
           type: "news",
           config: {
             provider: "twitter",
@@ -42,7 +42,7 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
           },
         },
         {
-          id: "widget-2" as WidgetId,
+          id: "w-chart" as WidgetId,
           type: "chart",
           config: {
             tickers: ["AMZN.US"],
@@ -51,7 +51,7 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
           },
         },
         {
-          id: "widget-3" as WidgetId,
+          id: "w-chart-2" as WidgetId,
           type: "chart",
           config: {
             tickers: ["TSLA.US"],
@@ -63,7 +63,7 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
       frames: [
         {
           id: "frame-1" as FrameId,
-          widgets: ["widget-1" as WidgetId, "widget-2" as WidgetId],
+          widgets: ["w-news" as WidgetId, "w-chart" as WidgetId],
           config: {
             width: 80,
             height: 20,
@@ -73,7 +73,7 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
         },
         {
           id: "frame-2" as FrameId,
-          widgets: ["widget-3" as WidgetId],
+          widgets: ["w-chart-2" as WidgetId],
           config: {
             width: 70,
             height: 30,

@@ -1,10 +1,11 @@
 import RGL, { Layout, WidthProvider } from "react-grid-layout";
 import { useDispatch, useSelector } from "react-redux";
 import { State } from "../../store/types/State";
-import { FrameWrapper } from "../FrameWrapper";
+import { Wrapper } from "../Frame/Wrapper";
 import { WorkspaceId } from "../../store/types/WorkspaceId";
 import { FrameId } from "../../store/types/Frame";
 import { updateFrameConfig } from "../../store/types/Actions";
+import { Frame } from "../Frame/Frame";
 
 const GridLayout = WidthProvider(RGL);
 
@@ -87,11 +88,11 @@ export function WorkspaceWithItems({ id }: WorkspaceWithItemsProps) {
           );
         }}
         draggableHandle={"[data-draggable-handle]"}
-        isDroppable
-        onDrop={console.log}
       >
         {layouts?.map((l) => (
-          <FrameWrapper workspaceId={id} frameId={l.i as FrameId} key={l.i} />
+          <Wrapper workspaceId={id} frameId={l.i as FrameId} key={l.i}>
+            <Frame workspaceId={id} frameId={l.i as FrameId} />
+          </Wrapper>
         ))}
       </GridLayout>
     </div>

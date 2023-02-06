@@ -2,12 +2,20 @@ import { isReady, Loading, State } from "./types/State";
 import { Actions } from "./types/Actions";
 import { unreachable } from "../utils/expcetions";
 import { WorkspaceId } from "./types/WorkspaceId";
-import { Workspace } from "./types/Workspace";
-import { Frame, FrameId, newFrameId } from "./types/Frame";
+import * as Workspace from "./types/Workspace";
+import * as Frame from "./types/Frame";
+import { FrameId, newFrameId } from "./types/Frame";
 import { newWidgetId, Widget, WidgetId } from "./types/Widget";
 import produce from "immer";
-import { groupBy } from "lodash";
-import { getWidgetDefaultConfig, getWidgetSize } from "./utils";
+import { first, groupBy, last } from "lodash";
+import {
+  getNextItem,
+  getPrevItem,
+  getWidgetDefaultConfig,
+  getWidgetSize,
+} from "./utils";
+import { isT } from "../utils/value";
+import { WidgetType } from "./types/WidgetType";
 
 const initialState: Loading = {
   type: "Loading",
@@ -24,42 +32,31 @@ export function reducer(state: State = initialState, action: Actions): State {
             type: "Ready",
             payload: {
               workspaces: action.payload.reduce(
-                (acc: Record<WorkspaceId, Workspace>, item, i) => {
-                  acc[item.id] = {
-                    id: item.id,
-                    title: item.title,
+                (acc: Record<WorkspaceId, Workspace.Workspace>, apiItem, i) => {
+                  acc[apiItem.id] = {
+                    id: apiItem.id,
+                    title: apiItem.title,
                     order: (i + 1) / (action.payload.length + 1),
-                    widgets: item.widgets.reduce(
-                      (acc: Record<WidgetId, Widget>, item) => {
-                        acc[item.id] = item;
+                    widgets: apiItem.widgets.reduce(
+                      (acc: Record<WidgetId, Widget>, item, i) => {
+                        acc[item.id] = {
+                          ...item,
+                          order: (i + 1) / (apiItem.widgets.length + 1),
+                          frameId: apiItem.frames.find((f) =>
+                            f.widgets.includes(item.id)
+                          )?.id,
+                        };
                         return acc;
                       },
                       {}
                     ),
-                    frames: item.frames.reduce(
-                      (acc: Record<FrameId, Frame>, frame, i) => {
+                    frames: apiItem.frames.reduce(
+                      (acc: Record<Frame.FrameId, Frame.Frame>, frame, i) => {
                         acc[frame.id] = {
                           id: frame.id,
                           config: frame.config,
-                          order: (i + 1) / (item.frames.length + 1),
+                          order: i,
                           activeWidget: frame.widgets[0],
-                          widgets: frame.widgets.reduce(
-                            (
-                              acc: Record<
-                                WidgetId,
-                                { id: WidgetId; order: number }
-                              >,
-                              id,
-                              i
-                            ) => {
-                              acc[id] = {
-                                id,
-                                order: (i + 1) / (frame.widgets.length + 1),
-                              };
-                              return acc;
-                            },
-                            {}
-                          ),
                         };
 
                         return acc;
@@ -92,24 +89,12 @@ export function reducer(state: State = initialState, action: Actions): State {
             if (!workspace) return;
 
             const frame = workspace.frames[action.payload.frameId];
-            const minOrder = Math.min(
+            const maxOrder = Math.max(
               ...Object.values(workspace.frames).map((frame) => frame.order)
             );
-            if (!frame || frame.order === minOrder) return;
+            if (!frame || frame.order === maxOrder) return;
 
-            frame.order = minOrder / 2;
-
-            // Need to review in future and come up with a better solution
-            // The idea is if you change the order very often, the number is so small that we cannot
-            // deduce the zIndex value from it. So we need to reset the orders for all frames
-            if (frame.order < 0.00000001) {
-              const frames = Object.values(workspace.frames).sort(
-                (a, b) => a.order - b.order
-              );
-              frames.forEach((frame, i) => {
-                frame.order = (i + 1) / (frames.length + 1);
-              });
-            }
+            frame.order = maxOrder + 1;
           })
         : state;
     case "RemoveFrame":
@@ -123,10 +108,12 @@ export function reducer(state: State = initialState, action: Actions): State {
             if (!frame) return;
 
             const grouped = groupBy(
-              Object.values(workspace.widgets),
+              Object.values(workspace.widgets).filter(isT),
               (widget) => widget.type
             );
-            Object.values(frame.widgets)
+            Object.values(workspace.widgets)
+              .filter(isT)
+              .filter((widget) => widget.frameId === action.payload.frameId)
               .map((w) => workspace.widgets[w.id])
               .filter((w): w is Widget => !!w)
               .filter((w) => grouped[w.type].length > 1)
@@ -145,22 +132,25 @@ export function reducer(state: State = initialState, action: Actions): State {
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
 
-            const frame = workspace.frames[action.payload.frameId];
-            if (!frame) return;
-
-            const widget =
-              workspace.widgets[frame.widgets[action.payload.widgetId].id];
+            const widget = workspace.widgets[action.payload.widgetId];
             if (!widget) return;
 
-            delete frame.widgets[action.payload.widgetId];
+            const frame = widget.frameId
+              ? workspace.frames[widget.frameId]
+              : undefined;
+            if (!frame) return;
 
-            if (Object.keys(frame.widgets).length === 0) {
-              delete workspace.frames[action.payload.frameId];
+            const count = Object.values(workspace.widgets).filter(
+              (w) => w && w.frameId === frame.id
+            ).length;
+            if (count < 2) {
+              delete workspace.frames[frame.id];
+              widget.frameId = undefined;
             }
 
             if (
               Object.values(workspace.widgets).filter(
-                (w) => w.type === widget.type
+                (w) => w && w.type === widget.type
               ).length > 1
             ) {
               delete workspace.widgets[widget.id];
@@ -174,15 +164,13 @@ export function reducer(state: State = initialState, action: Actions): State {
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
 
-            const frame = workspace.frames[action.payload.frameId];
+            const widget = workspace.widgets[action.payload.widgetId];
+            if (!widget || !widget.frameId) return;
+
+            const frame = workspace.frames[widget.frameId];
             if (!frame) return;
 
-            const widget = frame.widgets[action.payload.widgetId].id;
-            if (!widget) return;
-
-            if (frame.activeWidget !== widget) {
-              frame.activeWidget = widget;
-            }
+            frame.activeWidget = widget.id;
           })
         : state;
     case "UpdateFrameConfig":
@@ -205,30 +193,49 @@ export function reducer(state: State = initialState, action: Actions): State {
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
 
-            const minOrder = Math.min(
-              ...Object.values(workspace.frames).map((w) => w.order)
+            const frameMaxOrder = Math.max(
+              ...Object.values(workspace.frames).map((w) => w.order),
+              0
+            );
+            const widgetMaxOrder = Math.max(
+              ...Object.values(workspace.widgets)
+                .filter(isT)
+                .map((w) => w.order),
+              0
             );
 
+            function getOrCreateWidget(
+              type: WidgetType,
+              frameId: FrameId,
+              order: number
+            ): Widget {
+              const existing = Object.values(workspace.widgets).find(
+                (w) => w && w.type === type && w.frameId === undefined
+              );
+
+              return (
+                existing || {
+                  id: newWidgetId(),
+                  type,
+                  frameId,
+                  order,
+                  config:
+                    Object.values(workspace.widgets)
+                      .filter(isT)
+                      .find((w) => w.type === type)?.config ??
+                    getWidgetDefaultConfig(type),
+                }
+              );
+            }
+
             action.payload.widgets.reduce(
-              (prevOrder, { type, position }, i) => {
+              ([fOrder, wOrder], { type, position }, i) => {
                 const frameId = newFrameId();
                 const widgetId = newWidgetId();
-                const order = prevOrder / 2;
                 const size = getWidgetSize(type);
-                const config =
-                  Object.values(workspace.widgets).find((w) => w.type === type)
-                    ?.config ?? getWidgetDefaultConfig(type);
-
-                workspace.widgets[widgetId] = { id: widgetId, type, config };
-                workspace.frames[frameId] = {
+                const frame: Frame.Frame = {
                   id: frameId,
-                  order,
-                  widgets: {
-                    [widgetId]: {
-                      id: widgetId,
-                      order: 0.5,
-                    },
-                  },
+                  order: fOrder + 1,
                   activeWidget: widgetId,
                   config: {
                     width: size.minWidth,
@@ -237,15 +244,107 @@ export function reducer(state: State = initialState, action: Actions): State {
                     y: position?.y ?? i * 5,
                   },
                 };
+                const widget = getOrCreateWidget(
+                  type,
+                  frameId,
+                  (wOrder + 1) / 2
+                );
 
-                return order;
+                workspace.widgets[widget.id] = widget;
+                workspace.frames[frame.id] = frame;
+
+                return [frame.order, widget.order];
               },
-              minOrder
+              [frameMaxOrder, widgetMaxOrder]
             );
           })
         : state;
+    case "MoveWidget": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const widgetId = action.payload.widgetId;
+            const workspace =
+              draft.payload.workspaces[action.payload.workspaceId];
+            if (!workspace) return;
+
+            const fromFrame = workspace.widgets[widgetId]?.frameId;
+
+            switch (action.payload.position.type) {
+              case "start":
+              case "end": {
+                const type = action.payload.position.type;
+                const frameId = action.payload.position.frameId;
+                const toFrame = workspace.frames[frameId];
+                if (!fromFrame || !toFrame) return;
+
+                const widget = workspace.widgets[widgetId];
+                if (!widget) return;
+
+                const sorted = Object.values(workspace.widgets)
+                  .filter(isT)
+                  .sort((a, b) => (a.order < b.order ? -1 : 1));
+                const referenceWidget = { start: first, end: last }[type](
+                  sorted
+                );
+                const coefficient = { start: 0, end: 1 }[type];
+
+                if (!referenceWidget) return;
+
+                widget.frameId = toFrame.id;
+                widget.order = (referenceWidget.order + coefficient) / 2;
+
+                return;
+              }
+              case "after":
+              case "before": {
+                const targetWidgetId = action.payload.position.targetWidgetId;
+                const type = action.payload.position.type;
+
+                if (widgetId === targetWidgetId) return;
+
+                const toFrame = workspace.widgets[targetWidgetId]?.frameId;
+                if (!fromFrame) return;
+
+                const widget = workspace.widgets[widgetId];
+                const targetWidget = workspace.widgets[targetWidgetId];
+                if (!targetWidget || !widget) return;
+
+                const otherWidget = otherWidgetMap[type](
+                  Object.values(workspace.widgets).filter(
+                    (w): w is Widget => !!w && w.frameId === toFrame
+                  ),
+                  targetWidget.id
+                );
+
+                if (otherWidget?.id === widget.id) return;
+
+                const otherOrder = otherWidget?.order ?? defaultOrder[type];
+                widget.frameId = toFrame;
+                widget.order = (targetWidget.order + otherOrder) / 2;
+
+                if (
+                  Object.values(workspace.widgets).filter(
+                    (w) => w && w.frameId === fromFrame
+                  ).length === 0
+                ) {
+                  delete workspace.frames[fromFrame];
+                }
+              }
+            }
+          })
+        : state;
+    }
     default:
       unreachable(action);
       return state;
   }
 }
+
+const otherWidgetMap = {
+  after: getNextItem,
+  before: getPrevItem,
+};
+const defaultOrder = {
+  after: 1,
+  before: 0,
+};

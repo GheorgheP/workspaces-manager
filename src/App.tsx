@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import { getWorkspaces } from "./api/Workspace";
 import { loadSuccess } from "./store/types/Actions";
 import { CurrentWorkspaceProvider } from "./contexts/CurrentWorkspace";
+import { DndProvider } from "react-dnd";
+import { HTML5Backend } from "react-dnd-html5-backend";
 
 export function App() {
   const store = getStore();
@@ -15,9 +17,11 @@ export function App() {
 
   return (
     <Provider store={store}>
-      <CurrentWorkspaceProvider>
-        <Container />
-      </CurrentWorkspaceProvider>
+      <DndProvider backend={HTML5Backend}>
+        <CurrentWorkspaceProvider>
+          <Container />
+        </CurrentWorkspaceProvider>
+      </DndProvider>
     </Provider>
   );
 }

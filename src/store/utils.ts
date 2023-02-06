@@ -1,4 +1,5 @@
 import { WidgetConfig, WidgetType } from "./types/WidgetType";
+import { last } from "lodash";
 
 interface Size {
   minWidth: number;
@@ -53,4 +54,36 @@ export function getWidgetDefaultConfig<T extends WidgetType>(
         origin: "US",
       } as WidgetConfig<T>;
   }
+}
+
+export function getPrevItem<T extends { id: any; order: number }>(
+  items: T[],
+  id: T["id"]
+): T | undefined {
+  const sortedWidgets = items.sort((a, b) => a.order - b.order);
+  const index = sortedWidgets.findIndex((w) => w?.id === id);
+
+  return sortedWidgets[index - 1];
+}
+
+export function getNextItem<T extends { id: any; order: number }>(
+  items: T[],
+  id: T["id"]
+): T | undefined {
+  const sorted = items.sort((a, b) => a.order - b.order);
+  const index = sorted.findIndex((w) => w?.id === id);
+
+  return sorted[index + 1];
+}
+
+export function getFirstItem<T extends { id: any; order: number }>(
+  items: T[]
+): T | undefined {
+  return items.sort((a, b) => a.order - b.order)[0];
+}
+
+export function getLastItem<T extends { id: any; order: number }>(
+  items: T[]
+): T | undefined {
+  return last(items.sort((a, b) => a.order - b.order));
 }

@@ -1,8 +1,9 @@
 import { WorkspaceId } from "./types/WorkspaceId";
 import { FrameId } from "./types/Frame";
 import { isReady, State } from "./types/State";
-import { WidgetId } from "./types/Widget";
+import { Widget, WidgetId } from "./types/Widget";
 import { WidgetType } from "./types/WidgetType";
+import { createSelector } from "reselect";
 
 export const selectFrameZIndex =
   (workspaceId: WorkspaceId, frameId: FrameId) =>
@@ -12,8 +13,7 @@ export const selectFrameZIndex =
       case "LoadError":
         return undefined;
       case "Ready":
-        const order = s.payload.workspaces[workspaceId]?.frames[frameId]?.order;
-        return order ? MAX_Z_INDEX - Math.trunc(order * 1000000000) : undefined;
+        return s.payload.workspaces[workspaceId]?.frames[frameId]?.order;
     }
   };
 
@@ -48,7 +48,37 @@ export const selectWidgetType =
     return selectWidget(workspaceId, widgetId)(s)?.type;
   };
 
-// Technically CSS doesn't have any limitations to the z-index value, but
-// practically, there seems to be a limitation from browsers to int32
-// https://stackoverflow.com/questions/491052/minimum-and-maximum-value-of-z-index
-const MAX_Z_INDEX = 2147483647;
+export const selectFrameWidgetsIds = createSelector(
+  [
+    (s: State) => (isReady(s) ? s.payload.workspaces : undefined),
+    (s: State, workspaceId: WorkspaceId) => workspaceId,
+    (s: State, _: WorkspaceId, frameId: FrameId) => frameId,
+  ],
+  (workspaces, workspaceId, frameId): WidgetId[] => {
+    if (!workspaces) {
+      return [];
+    }
+
+    return (
+      Object.values(workspaces[workspaceId]?.widgets ?? {})
+        .filter((w): w is Widget => !!w && w.frameId === frameId)
+        .map((w) => w.id) ?? []
+    );
+  }
+);
+
+export const selectTabOrder = createSelector(
+  [
+    (s: State) => (isReady(s) ? s.payload.workspaces : undefined),
+    (s: State, workspaceId: WorkspaceId) => workspaceId,
+    (s: State, _: WorkspaceId, widgetId: WidgetId) => widgetId,
+  ],
+  (workspaces, workspaceId, widgetId): number | undefined => {
+    if (!workspaces) {
+      return undefined;
+    }
+    const order = workspaces[workspaceId]?.widgets[widgetId]?.order;
+
+    return order ? Math.trunc(order * 1000000000) : undefined;
+  }
+);

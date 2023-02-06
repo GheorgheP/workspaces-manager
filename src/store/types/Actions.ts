@@ -63,7 +63,6 @@ export interface RemoveWidget {
   type: "RemoveWidget";
   payload: {
     workspaceId: WorkspaceId;
-    frameId: FrameId;
     widgetId: WidgetId;
   };
 }
@@ -81,7 +80,6 @@ export interface SetActiveWidget {
   type: "SetActiveWidget";
   payload: {
     workspaceId: WorkspaceId;
-    frameId: FrameId;
     widgetId: WidgetId;
   };
 }
@@ -151,6 +149,30 @@ export const addWidgets = (payload: AddWidgets["payload"]): AddWidgets => ({
 });
 // endregion
 
+// region MoveWidget
+export interface MoveWidget {
+  type: "MoveWidget";
+  payload: {
+    workspaceId: WorkspaceId;
+    widgetId: WidgetId;
+    position:
+      | {
+          type: "start" | "end";
+          frameId: FrameId;
+        }
+      | {
+          type: "before" | "after";
+          targetWidgetId: WidgetId;
+        };
+  };
+}
+
+export const moveWidget = (payload: MoveWidget["payload"]): MoveWidget => ({
+  type: "MoveWidget",
+  payload,
+});
+// endregion
+
 export type Actions =
   | LoadSuccess
   | LoadError
@@ -159,4 +181,5 @@ export type Actions =
   | RemoveWidget
   | SetActiveWidget
   | UpdateFrameConfig
-  | AddWidgets;
+  | AddWidgets
+  | MoveWidget;

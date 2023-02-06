@@ -12,7 +12,6 @@ export const newFrameId = (): FrameId => uuid() as FrameId;
 export interface Frame {
   id: FrameId;
   order: number;
-  widgets: Record<WidgetId, { id: WidgetId; order: number }>;
   activeWidget: WidgetId;
   config: {
     width: number;
