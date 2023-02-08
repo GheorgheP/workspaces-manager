@@ -178,23 +178,6 @@ export function reducer(state: State = initialState, action: Actions): State {
             frame.activeWidget = widget.id;
           })
         : state;
-    case "UpdateFrameConfig":
-      return isReady(state)
-        ? produce(state, (draft) => {
-            const workspace = Object.values(draft.payload.workspaces).find(
-              (w) => w.frames[action.payload.frameId]
-            );
-            if (!workspace) return;
-
-            const frame = workspace.frames[action.payload.frameId];
-            if (!frame) return;
-
-            frame.config = {
-              ...frame.config,
-              ...action.payload.config,
-            };
-          })
-        : state;
     case "AddWidgets":
       return isReady(state)
         ? produce(state, (draft) => {
@@ -357,8 +340,14 @@ export function reducer(state: State = initialState, action: Actions): State {
 
             frame.config = {
               ...frame.config,
-              x: Math.max(frame.config.x + action.payload.x, 0),
-              y: Math.max(frame.config.y + action.payload.y, 0),
+              x: Math.min(
+                Math.max(frame.config.x + action.payload.x, 0),
+                frame.config.x + frame.config.width
+              ),
+              y: Math.min(
+                Math.max(frame.config.y + action.payload.y, 0),
+                frame.config.y + frame.config.height
+              ),
             };
           })
         : state;

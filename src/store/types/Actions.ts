@@ -1,6 +1,6 @@
 // region LoadSuccess
 import { ApiWorkspace } from "../../api/Workspace";
-import { Frame, FrameId } from "./Frame";
+import { FrameId } from "./Frame";
 import { WorkspaceId } from "./WorkspaceId";
 import { WidgetId } from "./Widget";
 import { WidgetConfig, WidgetType } from "./WidgetType";
@@ -76,23 +76,6 @@ export const setActiveWidget = (
   payload: SetActiveWidget["payload"]
 ): SetActiveWidget => ({
   type: "SetActiveWidget",
-  payload,
-});
-// endregion
-
-// region UpdateFrameConfig
-export interface UpdateFrameConfig {
-  type: "UpdateFrameConfig";
-  payload: {
-    frameId: FrameId;
-    config: Partial<Frame["config"]>;
-  };
-}
-
-export const updateFrameConfig = (
-  payload: UpdateFrameConfig["payload"]
-): UpdateFrameConfig => ({
-  type: "UpdateFrameConfig",
   payload,
 });
 // endregion
@@ -181,7 +164,6 @@ export type Actions =
   | RemoveFrame
   | RemoveWidget
   | SetActiveWidget
-  | UpdateFrameConfig
   | AddWidgets
   | MoveWidget
   | MoveFrame;
