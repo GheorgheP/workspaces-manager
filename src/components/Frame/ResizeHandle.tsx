@@ -2,7 +2,8 @@ import { FrameId } from "../../store/types/Frame";
 import classNames from "classnames";
 import { useDrag } from "react-dnd";
 import { ItemType } from "../types";
-import { memo } from "react";
+import { memo, useEffect } from "react";
+import { getEmptyImage } from "react-dnd-html5-backend";
 
 export interface ResizeHandleProps {
   id: FrameId;
@@ -10,13 +11,17 @@ export interface ResizeHandleProps {
 }
 
 export const ResizeHandle = memo(({ id, direction }: ResizeHandleProps) => {
-  const [, drag] = useDrag({
+  const [, drag, preview] = useDrag({
     type: ItemType.Resize,
     item: {
       frameId: id,
       direction,
     },
   });
+
+  useEffect(() => {
+    preview(getEmptyImage(), { captureDraggingState: true });
+  }, []);
 
   return (
     <div
@@ -29,20 +34,20 @@ export const ResizeHandle = memo(({ id, direction }: ResizeHandleProps) => {
 function getResizeDirectionClass(direction: ResizeHandleProps["direction"]) {
   switch (direction) {
     case "nw":
-      return "cursor-nw-resize w-4 h-4 top-0 left-0";
+      return "cursor-nw-resize w-2 h-2 top-0 left-0 z-20";
     case "n":
-      return "cursor-n-resize w-full h-4 top-0 left-0";
+      return "cursor-n-resize w-full h-2 top-0 left-0 z-10";
     case "ne":
-      return "cursor-ne-resize w-4 h-4 top-0 right-0";
+      return "cursor-ne-resize w-2 h-2 top-0 right-0 z-20";
     case "e":
-      return "cursor-e-resize w-4 h-4 top-0 right-0";
+      return "cursor-e-resize w-2 h-full top-0 right-0 z-10";
     case "sw":
-      return "cursor-sw-resize w-4 h-4 bottom-0 left-0";
+      return "cursor-sw-resize w-2 h-2 bottom-0 left-0 z-20";
     case "s":
-      return "cursor-s-resize w-4 h-4 bottom-0 left-0";
+      return "cursor-s-resize w-full h-2 bottom-0 left-0 z-10";
     case "se":
-      return "cursor-se-resize w-4 h-4 bottom-0 right-0";
+      return "cursor-se-resize w-2 h-2 bottom-0 right-0 z-20";
     case "w":
-      return "cursor-w-resize w-4 h-4 top-0 left-0";
+      return "cursor-w-resize w-2 h-full top-0 left-0 z-10";
   }
 }
