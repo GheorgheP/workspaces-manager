@@ -29,10 +29,7 @@ export const loadError = (): LoadError => ({
 // region SetActiveFrame
 export interface SetActiveFrame {
   type: "SetActiveFrame";
-  payload: {
-    workspaceId: WorkspaceId;
-    frameId: FrameId;
-  };
+  payload: FrameId;
 }
 
 export const setActiveFrame = (
@@ -46,10 +43,7 @@ export const setActiveFrame = (
 // region RemoveFrame
 export interface RemoveFrame {
   type: "RemoveFrame";
-  payload: {
-    workspaceId: WorkspaceId;
-    frameId: FrameId;
-  };
+  payload: FrameId;
 }
 
 export const removeFrame = (payload: RemoveFrame["payload"]): RemoveFrame => ({
@@ -61,10 +55,7 @@ export const removeFrame = (payload: RemoveFrame["payload"]): RemoveFrame => ({
 // region RemoveWidget
 export interface RemoveWidget {
   type: "RemoveWidget";
-  payload: {
-    workspaceId: WorkspaceId;
-    widgetId: WidgetId;
-  };
+  payload: WidgetId;
 }
 
 export const removeWidget = (
@@ -78,10 +69,7 @@ export const removeWidget = (
 // region SetActiveWidget
 export interface SetActiveWidget {
   type: "SetActiveWidget";
-  payload: {
-    workspaceId: WorkspaceId;
-    widgetId: WidgetId;
-  };
+  payload: WidgetId;
 }
 
 export const setActiveWidget = (
@@ -96,9 +84,8 @@ export const setActiveWidget = (
 export interface UpdateFrameConfig {
   type: "UpdateFrameConfig";
   payload: {
-    workspaceId: WorkspaceId;
     frameId: FrameId;
-    config: Frame["config"];
+    config: Partial<Frame["config"]>;
   };
 }
 
@@ -114,7 +101,6 @@ export const updateFrameConfig = (
 export interface UpdateWidgetConfig {
   type: "UpdateWidgetConfig";
   payload: {
-    workspaceId: WorkspaceId;
     widgetId: WidgetId;
     config: WidgetConfig<WidgetType>;
   };
@@ -153,7 +139,6 @@ export const addWidgets = (payload: AddWidgets["payload"]): AddWidgets => ({
 export interface MoveWidget {
   type: "MoveWidget";
   payload: {
-    workspaceId: WorkspaceId;
     widgetId: WidgetId;
     position:
       | {
@@ -173,6 +158,22 @@ export const moveWidget = (payload: MoveWidget["payload"]): MoveWidget => ({
 });
 // endregion
 
+// region MoveFrame
+export interface MoveFrame {
+  type: "MoveFrame";
+  payload: {
+    frameId: FrameId;
+    x: number;
+    y: number;
+  };
+}
+
+export const moveFrame = (payload: MoveFrame["payload"]): MoveFrame => ({
+  type: "MoveFrame",
+  payload,
+});
+// endregion
+
 export type Actions =
   | LoadSuccess
   | LoadError
@@ -182,4 +183,5 @@ export type Actions =
   | SetActiveWidget
   | UpdateFrameConfig
   | AddWidgets
-  | MoveWidget;
+  | MoveWidget
+  | MoveFrame;

@@ -25,9 +25,8 @@ body {
 }
 
 .frame {
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 15px;
+  grid-column: 1/4;
+  grid-row: 1/4;
 }
 
 .workspace-frame-wrapper {

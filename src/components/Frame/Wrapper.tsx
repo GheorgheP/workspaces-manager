@@ -1,39 +1,40 @@
 import { FrameId } from "../../store/types/Frame";
-import { ComponentProps, forwardRef, memo, ReactElement } from "react";
-import classNames from "classnames";
+import { ReactElement } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { WorkspaceId } from "../../store/types/WorkspaceId";
 import { setActiveFrame } from "../../store/types/Actions";
-import { selectFrameZIndex } from "../../store/selectors";
+import { selectFrameConfig } from "../../store/selectors";
+import { directions } from "../../store/types/Direction";
+import { ResizeHandle } from "./ResizeHandle";
 
-export interface FrameWrapperProps extends ComponentProps<"div"> {
-  workspaceId: WorkspaceId;
-  frameId: FrameId;
+export interface FrameWrapperProps {
+  id: FrameId;
+  children: ReactElement;
 }
 
-export const Wrapper = memo(
-  forwardRef<HTMLDivElement, FrameWrapperProps>(
-    (
-      { frameId, workspaceId, ...props }: FrameWrapperProps,
-      ref
-    ): ReactElement => {
-      const dispatch = useDispatch();
-      const zIndex = useSelector(selectFrameZIndex(workspaceId, frameId));
+export const Wrapper = ({
+  id,
+  children,
+}: FrameWrapperProps): ReactElement | null => {
+  const dispatch = useDispatch();
+  const config = useSelector((s) => selectFrameConfig(s, id));
 
-      return (
-        <div
-          {...props}
-          ref={ref}
-          className={classNames("workspace-frame-wrapper", props.className)}
-          style={{ ...props.style, zIndex }}
-          onMouseDown={(e) => {
-            dispatch(setActiveFrame({ workspaceId, frameId }));
-            props?.onMouseDown?.(e);
-          }}
-        >
-          {props.children}
-        </div>
-      );
-    }
-  )
-);
+  if (!config) return null;
+
+  return (
+    <div
+      className={"workspace-frame-wrapper absolute flex"}
+      style={{
+        zIndex: config.order,
+        transform: `translate(${config.x}px, ${config.y}px)`,
+        width: config.width,
+        height: config.height,
+      }}
+      onMouseDown={() => dispatch(setActiveFrame(id))}
+    >
+      {children}
+      {directions.map((direction) => (
+        <ResizeHandle id={id} direction={direction} key={direction} />
+      ))}
+    </div>
+  );
+};

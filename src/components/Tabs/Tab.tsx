@@ -1,5 +1,3 @@
-import { WorkspaceId } from "../../store/types/WorkspaceId";
-import { FrameId } from "../../store/types/Frame";
 import { WidgetId } from "../../store/types/Widget";
 import { memo, useMemo, useRef } from "react";
 import { shallowEqual, useDispatch, useSelector } from "react-redux";
@@ -22,12 +20,10 @@ import { ItemType } from "../types";
 import { distinctUntilChanged, Subject } from "rxjs";
 
 export interface TabProps {
-  workspaceId: WorkspaceId;
-  frameId: FrameId;
-  widgetId: WidgetId;
+  id: WidgetId;
 }
 
-export const Tab = memo(({ frameId, widgetId, workspaceId }: TabProps) => {
+export const Tab = memo(({ id }: TabProps) => {
   const dispatch = useDispatch();
   const dispatcher = useMemo(() => {
     const dispatcher$ = new Subject<MoveWidget>();
@@ -36,18 +32,14 @@ export const Tab = memo(({ frameId, widgetId, workspaceId }: TabProps) => {
     return (a: MoveWidget) => dispatcher$.next(a);
   }, []);
   const ref = useRef<HTMLDivElement>(null);
-  const isActive = useSelector(
-    selectIsActiveWidget(workspaceId, frameId, widgetId)
-  );
-  const type = useSelector(selectWidgetType(workspaceId, widgetId));
-  const order = useSelector((s: State) =>
-    selectTabOrder(s, workspaceId, widgetId)
-  ) as number;
+  const isActive = useSelector((s) => selectIsActiveWidget(s, id));
+  const type = useSelector((s) => selectWidgetType(s, id));
+  const order = useSelector((s: State) => selectTabOrder(s, id)) as number;
 
   const [, drop] = useDrop<Item, void>({
     accept: ItemType.Tab,
     hover(item, monitor) {
-      if (!ref.current || item.id === widgetId) {
+      if (!ref.current || item.id === id) {
         return;
       }
 
@@ -71,16 +63,15 @@ export const Tab = memo(({ frameId, widgetId, workspaceId }: TabProps) => {
 
       dispatcher(
         moveWidget({
-          workspaceId,
           widgetId: item.id,
-          position: { type: position, targetWidgetId: widgetId },
+          position: { type: position, targetWidgetId: id },
         })
       );
     },
   });
   const [, drag] = useDrag<Item>({
     type: ItemType.Tab,
-    item: { id: widgetId, frameId, order },
+    item: { id, order },
   });
 
   drag(drop(ref));
@@ -105,14 +96,11 @@ export const Tab = memo(({ frameId, widgetId, workspaceId }: TabProps) => {
             "opacity-30": !isActive,
           }
         )}
-        onClick={() => dispatch(setActiveWidget({ workspaceId, widgetId }))}
+        onClick={() => dispatch(setActiveWidget(id))}
       >
         {widgetTypeTitle(type)}
       </span>
-      <button
-        type="button"
-        onClick={() => dispatch(removeWidget({ workspaceId, widgetId }))}
-      >
+      <button type="button" onClick={() => dispatch(removeWidget(id))}>
         X
       </button>
     </div>
@@ -121,6 +109,5 @@ export const Tab = memo(({ frameId, widgetId, workspaceId }: TabProps) => {
 
 interface Item {
   id: WidgetId;
-  frameId: FrameId;
   order: number;
 }

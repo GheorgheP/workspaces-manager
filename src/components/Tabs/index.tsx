@@ -1,4 +1,3 @@
-import { WorkspaceId } from "../../store/types/WorkspaceId";
 import { FrameId } from "../../store/types/Frame";
 import { ReactElement } from "react";
 import { useSelector } from "react-redux";
@@ -7,24 +6,16 @@ import { Tab } from "./Tab";
 import { selectFrameWidgetsIds } from "../../store/selectors";
 
 export interface TabsProps {
-  workspaceId: WorkspaceId;
-  frameId: FrameId;
+  id: FrameId;
 }
 
-export function Tabs({ frameId, workspaceId }: TabsProps): ReactElement {
-  const tabs = useSelector((s: State) =>
-    selectFrameWidgetsIds(s, workspaceId, frameId)
-  );
+export function Tabs({ id }: TabsProps): ReactElement {
+  const tabs = useSelector((s: State) => selectFrameWidgetsIds(s, id));
 
   return (
     <div className={"flex"}>
       {tabs.map((id) => (
-        <Tab
-          key={id}
-          workspaceId={workspaceId}
-          frameId={frameId}
-          widgetId={id}
-        />
+        <Tab key={id} id={id} />
       ))}
     </div>
   );

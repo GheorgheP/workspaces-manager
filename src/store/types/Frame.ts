@@ -11,12 +11,12 @@ export const newFrameId = (): FrameId => uuid() as FrameId;
 
 export interface Frame {
   id: FrameId;
-  order: number;
   activeWidget: WidgetId;
   config: {
     width: number;
     height: number;
     x: number;
     y: number;
+    order: number;
   };
 }

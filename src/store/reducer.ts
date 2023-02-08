@@ -54,8 +54,7 @@ export function reducer(state: State = initialState, action: Actions): State {
                       (acc: Record<Frame.FrameId, Frame.Frame>, frame, i) => {
                         acc[frame.id] = {
                           id: frame.id,
-                          config: frame.config,
-                          order: i,
+                          config: { ...frame.config, order: i },
                           activeWidget: frame.widgets[0],
                         };
 
@@ -84,27 +83,31 @@ export function reducer(state: State = initialState, action: Actions): State {
     case "SetActiveFrame":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload]
+            );
             if (!workspace) return;
 
-            const frame = workspace.frames[action.payload.frameId];
+            const frame = workspace.frames[action.payload];
             const maxOrder = Math.max(
-              ...Object.values(workspace.frames).map((frame) => frame.order)
+              ...Object.values(workspace.frames).map(
+                (frame) => frame.config.order
+              )
             );
-            if (!frame || frame.order === maxOrder) return;
+            if (!frame || frame.config.order === maxOrder) return;
 
-            frame.order = maxOrder + 1;
+            frame.config.order = maxOrder + 1;
           })
         : state;
     case "RemoveFrame":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload]
+            );
             if (!workspace) return;
 
-            const frame = workspace.frames[action.payload.frameId];
+            const frame = workspace.frames[action.payload];
             if (!frame) return;
 
             const grouped = groupBy(
@@ -113,7 +116,7 @@ export function reducer(state: State = initialState, action: Actions): State {
             );
             Object.values(workspace.widgets)
               .filter(isT)
-              .filter((widget) => widget.frameId === action.payload.frameId)
+              .filter((widget) => widget.frameId === action.payload)
               .map((w) => workspace.widgets[w.id])
               .filter((w): w is Widget => !!w)
               .filter((w) => grouped[w.type].length > 1)
@@ -122,17 +125,18 @@ export function reducer(state: State = initialState, action: Actions): State {
                 delete workspace.widgets[id];
               });
 
-            delete workspace.frames[action.payload.frameId];
+            delete workspace.frames[action.payload];
           })
         : state;
     case "RemoveWidget":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.widgets[action.payload]
+            );
             if (!workspace) return;
 
-            const widget = workspace.widgets[action.payload.widgetId];
+            const widget = workspace.widgets[action.payload];
             if (!widget) return;
 
             const frame = widget.frameId
@@ -160,11 +164,12 @@ export function reducer(state: State = initialState, action: Actions): State {
     case "SetActiveWidget":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.widgets[action.payload]
+            );
             if (!workspace) return;
 
-            const widget = workspace.widgets[action.payload.widgetId];
+            const widget = workspace.widgets[action.payload];
             if (!widget || !widget.frameId) return;
 
             const frame = workspace.frames[widget.frameId];
@@ -176,14 +181,18 @@ export function reducer(state: State = initialState, action: Actions): State {
     case "UpdateFrameConfig":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload.frameId]
+            );
             if (!workspace) return;
 
             const frame = workspace.frames[action.payload.frameId];
             if (!frame) return;
 
-            frame.config = action.payload.config;
+            frame.config = {
+              ...frame.config,
+              ...action.payload.config,
+            };
           })
         : state;
     case "AddWidgets":
@@ -194,7 +203,7 @@ export function reducer(state: State = initialState, action: Actions): State {
             if (!workspace) return;
 
             const frameMaxOrder = Math.max(
-              ...Object.values(workspace.frames).map((w) => w.order),
+              ...Object.values(workspace.frames).map((w) => w.config.order),
               0
             );
             const widgetMaxOrder = Math.max(
@@ -235,9 +244,9 @@ export function reducer(state: State = initialState, action: Actions): State {
                 const size = getWidgetSize(type);
                 const frame: Frame.Frame = {
                   id: frameId,
-                  order: fOrder + 1,
                   activeWidget: widgetId,
                   config: {
+                    order: fOrder + 1,
                     width: size.minWidth,
                     height: size.minHeight,
                     x: position?.x ?? i * 5,
@@ -253,7 +262,7 @@ export function reducer(state: State = initialState, action: Actions): State {
                 workspace.widgets[widget.id] = widget;
                 workspace.frames[frame.id] = frame;
 
-                return [frame.order, widget.order];
+                return [frame.config.order, widget.order];
               },
               [frameMaxOrder, widgetMaxOrder]
             );
@@ -263,8 +272,9 @@ export function reducer(state: State = initialState, action: Actions): State {
       return isReady(state)
         ? produce(state, (draft) => {
             const widgetId = action.payload.widgetId;
-            const workspace =
-              draft.payload.workspaces[action.payload.workspaceId];
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.widgets[action.payload.widgetId]
+            );
             if (!workspace) return;
 
             const fromFrame = workspace.widgets[widgetId]?.frameId;
@@ -331,6 +341,25 @@ export function reducer(state: State = initialState, action: Actions): State {
                 }
               }
             }
+          })
+        : state;
+    }
+    case "MoveFrame": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload.frameId]
+            );
+            if (!workspace) return;
+
+            const frame = workspace.frames[action.payload.frameId];
+            if (!frame) return;
+
+            frame.config = {
+              ...frame.config,
+              x: Math.max(frame.config.x + action.payload.x, 0),
+              y: Math.max(frame.config.y + action.payload.y, 0),
+            };
           })
         : state;
     }
