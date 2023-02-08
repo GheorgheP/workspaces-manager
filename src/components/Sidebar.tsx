@@ -1,18 +1,14 @@
 import { useDispatch, useSelector } from "react-redux";
-import { isReady, State } from "../store/types/State";
 import { widgetTypeTitle } from "../store/types/WidgetType";
-import { addWidgets } from "../store/types/Actions";
+import { addWidget } from "../store/types/Actions";
 import { useCurrentWorkspace } from "../contexts/CurrentWorkspace";
+import { createSelector } from "reselect";
+import { selectWidgetTypes } from "../store/selectors";
 
 export function Sidebar() {
   const { id: workspaceId } = useCurrentWorkspace();
   const dispatch = useDispatch();
-  const items = useSelector((state: State) =>
-    (isReady(state) ? state.payload.widgetTypes : []).map((type) => ({
-      id: type,
-      name: widgetTypeTitle(type),
-    }))
-  );
+  const items = useSelector(widgetTypesWithTitle);
 
   return (
     <div className="sidebar bg-shark p-2 flex flex-col">
@@ -22,13 +18,7 @@ export function Sidebar() {
           key={item.id}
           className="hover:bg-arsenic py-2 px-4 rounded-[20px] cursor-pointer text-white/50 hover:text-white"
           onClick={() =>
-            workspaceId &&
-            dispatch(
-              addWidgets({
-                workspaceId,
-                widgets: [{ type: item.id }],
-              })
-            )
+            workspaceId && dispatch(addWidget({ workspaceId, type: item.id }))
           }
         >
           {item.name}
@@ -37,3 +27,10 @@ export function Sidebar() {
     </div>
   );
 }
+
+const widgetTypesWithTitle = createSelector(selectWidgetTypes, (types) =>
+  types.map((type) => ({
+    id: type,
+    name: widgetTypeTitle(type),
+  }))
+);

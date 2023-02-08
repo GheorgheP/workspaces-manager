@@ -24,6 +24,7 @@ export interface ApiWorkspace {
   id: WorkspaceId;
   title: string;
   frames: ApiFrame[];
+  fullscreen: boolean;
   widgets: ApiWidget<WidgetType>[];
 }
 
@@ -60,13 +61,14 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
           },
         },
       ],
+      fullscreen: false,
       frames: [
         {
           id: "frame-1" as FrameId,
           widgets: ["w-news" as WidgetId, "w-chart" as WidgetId],
           config: {
-            width: 250,
-            height: 200,
+            width: 30,
+            height: 30,
             x: 0,
             y: 0,
           },
@@ -75,10 +77,10 @@ export async function getWorkspaces(): Promise<ApiWorkspace[]> {
           id: "frame-2" as FrameId,
           widgets: ["w-chart-2" as WidgetId],
           config: {
-            width: 180,
-            height: 200,
-            x: 600,
-            y: 400,
+            width: 40,
+            height: 40,
+            x: 50,
+            y: 50,
           },
         },
       ],

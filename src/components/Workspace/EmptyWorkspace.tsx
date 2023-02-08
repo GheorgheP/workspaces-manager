@@ -3,7 +3,7 @@ import { State } from "../../store/types/State";
 import { WidgetType, widgetTypeTitle } from "../../store/types/WidgetType";
 import { useState } from "react";
 import { WorkspaceId } from "../../store/types/WorkspaceId";
-import { addWidgets } from "../../store/types/Actions";
+import { fillEmptyWorkspace } from "../../store/types/Actions";
 
 export function EmptyWorkspace({ id }: { id: WorkspaceId }) {
   const dispatch = useDispatch();
@@ -34,12 +34,7 @@ export function EmptyWorkspace({ id }: { id: WorkspaceId }) {
           <button
             type={"button"}
             onClick={() =>
-              dispatch(
-                addWidgets({
-                  workspaceId: id,
-                  widgets: widgets.map((type) => ({ type })),
-                })
-              )
+              dispatch(fillEmptyWorkspace({ workspaceId: id, widgets }))
             }
           >
             Add widgets

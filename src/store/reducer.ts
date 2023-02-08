@@ -3,19 +3,29 @@ import { Actions } from "./types/Actions";
 import { unreachable } from "../utils/expcetions";
 import { WorkspaceId } from "./types/WorkspaceId";
 import * as Workspace from "./types/Workspace";
+import {
+  addWidget,
+  getFreeWidgets,
+  maximize,
+  maxWidgetOrder,
+  minimize,
+  removeFrame,
+  removeWidget,
+  setActiveFrame,
+  setActiveWidget,
+} from "./types/Workspace";
 import * as Frame from "./types/Frame";
-import { FrameId, newFrameId } from "./types/Frame";
 import { newWidgetId, Widget, WidgetId } from "./types/Widget";
 import produce from "immer";
-import { first, groupBy, last } from "lodash";
+import { first, last } from "lodash";
 import {
   getNextItem,
   getPrevItem,
   getWidgetDefaultConfig,
-  getWidgetSize,
+  resizeFrame,
+  snapFramePosition,
 } from "./utils";
 import { isT } from "../utils/value";
-import { WidgetType } from "./types/WidgetType";
 
 const initialState: Loading = {
   type: "Loading",
@@ -50,6 +60,7 @@ export function reducer(state: State = initialState, action: Actions): State {
                       },
                       {}
                     ),
+                    isFullscreen: apiItem.fullscreen,
                     frames: apiItem.frames.reduce(
                       (acc: Record<Frame.FrameId, Frame.Frame>, frame, i) => {
                         acc[frame.id] = {
@@ -88,15 +99,10 @@ export function reducer(state: State = initialState, action: Actions): State {
             );
             if (!workspace) return;
 
-            const frame = workspace.frames[action.payload];
-            const maxOrder = Math.max(
-              ...Object.values(workspace.frames).map(
-                (frame) => frame.config.order
-              )
+            draft.payload.workspaces[workspace.id] = setActiveFrame(
+              workspace,
+              action.payload
             );
-            if (!frame || frame.config.order === maxOrder) return;
-
-            frame.config.order = maxOrder + 1;
           })
         : state;
     case "RemoveFrame":
@@ -110,22 +116,10 @@ export function reducer(state: State = initialState, action: Actions): State {
             const frame = workspace.frames[action.payload];
             if (!frame) return;
 
-            const grouped = groupBy(
-              Object.values(workspace.widgets).filter(isT),
-              (widget) => widget.type
+            draft.payload.workspaces[workspace.id] = removeFrame(
+              workspace,
+              action.payload
             );
-            Object.values(workspace.widgets)
-              .filter(isT)
-              .filter((widget) => widget.frameId === action.payload)
-              .map((w) => workspace.widgets[w.id])
-              .filter((w): w is Widget => !!w)
-              .filter((w) => grouped[w.type].length > 1)
-              .map((w) => w.id)
-              .forEach((id) => {
-                delete workspace.widgets[id];
-              });
-
-            delete workspace.frames[action.payload];
           })
         : state;
     case "RemoveWidget":
@@ -136,118 +130,47 @@ export function reducer(state: State = initialState, action: Actions): State {
             );
             if (!workspace) return;
 
-            const widget = workspace.widgets[action.payload];
-            if (!widget) return;
-
-            const frame = widget.frameId
-              ? workspace.frames[widget.frameId]
-              : undefined;
-            if (!frame) return;
-
-            const count = Object.values(workspace.widgets).filter(
-              (w) => w && w.frameId === frame.id
-            ).length;
-            if (count < 2) {
-              delete workspace.frames[frame.id];
-              widget.frameId = undefined;
-            }
-
-            if (
-              Object.values(workspace.widgets).filter(
-                (w) => w && w.type === widget.type
-              ).length > 1
-            ) {
-              delete workspace.widgets[widget.id];
-            }
+            draft.payload.workspaces[workspace.id] = removeWidget(
+              workspace,
+              action.payload
+            );
           })
         : state;
     case "SetActiveWidget":
       return isReady(state)
         ? produce(state, (draft) => {
-            const workspace = Object.values(draft.payload.workspaces).find(
+            const workspaces = draft.payload.workspaces;
+            const workspace = Object.values(workspaces).find(
               (w) => w.widgets[action.payload]
             );
             if (!workspace) return;
 
-            const widget = workspace.widgets[action.payload];
-            if (!widget || !widget.frameId) return;
-
-            const frame = workspace.frames[widget.frameId];
-            if (!frame) return;
-
-            frame.activeWidget = widget.id;
+            workspaces[workspace.id] = setActiveWidget(
+              workspace,
+              action.payload
+            );
           })
         : state;
-    case "AddWidgets":
+    case "AddWidget":
       return isReady(state)
         ? produce(state, (draft) => {
             const workspace =
               draft.payload.workspaces[action.payload.workspaceId];
             if (!workspace) return;
 
-            const frameMaxOrder = Math.max(
-              ...Object.values(workspace.frames).map((w) => w.config.order),
-              0
-            );
-            const widgetMaxOrder = Math.max(
-              ...Object.values(workspace.widgets)
-                .filter(isT)
-                .map((w) => w.order),
-              0
-            );
+            const widget: Widget = getFreeWidgets(workspace).find(
+              (w) => w.type === action.payload.type
+            ) ?? {
+              frameId: undefined,
+              order: (maxWidgetOrder(workspace) + 1) / 2,
+              type: action.payload.type,
+              id: newWidgetId(),
+              config: getWidgetDefaultConfig(action.payload.type),
+            };
 
-            function getOrCreateWidget(
-              type: WidgetType,
-              frameId: FrameId,
-              order: number
-            ): Widget {
-              const existing = Object.values(workspace.widgets).find(
-                (w) => w && w.type === type && w.frameId === undefined
-              );
-
-              return (
-                existing || {
-                  id: newWidgetId(),
-                  type,
-                  frameId,
-                  order,
-                  config:
-                    Object.values(workspace.widgets)
-                      .filter(isT)
-                      .find((w) => w.type === type)?.config ??
-                    getWidgetDefaultConfig(type),
-                }
-              );
-            }
-
-            action.payload.widgets.reduce(
-              ([fOrder, wOrder], { type, position }, i) => {
-                const frameId = newFrameId();
-                const widgetId = newWidgetId();
-                const size = getWidgetSize(type);
-                const frame: Frame.Frame = {
-                  id: frameId,
-                  activeWidget: widgetId,
-                  config: {
-                    order: fOrder + 1,
-                    width: size.minWidth,
-                    height: size.minHeight,
-                    x: position?.x ?? i * 5,
-                    y: position?.y ?? i * 5,
-                  },
-                };
-                const widget = getOrCreateWidget(
-                  type,
-                  frameId,
-                  (wOrder + 1) / 2
-                );
-
-                workspace.widgets[widget.id] = widget;
-                workspace.frames[frame.id] = frame;
-
-                return [frame.config.order, widget.order];
-              },
-              [frameMaxOrder, widgetMaxOrder]
+            draft.payload.workspaces[action.payload.workspaceId] = addWidget(
+              workspace,
+              widget
             );
           })
         : state;
@@ -333,22 +256,123 @@ export function reducer(state: State = initialState, action: Actions): State {
             const workspace = Object.values(draft.payload.workspaces).find(
               (w) => w.frames[action.payload.frameId]
             );
-            if (!workspace) return;
+            if (!workspace || workspace.isFullscreen) return;
 
             const frame = workspace.frames[action.payload.frameId];
             if (!frame) return;
 
+            const otherConfigs = Object.values(workspace.frames)
+              .filter((f) => f.id !== frame.id)
+              .map((f) => ({ ...f.config }))
+              .concat([
+                {
+                  x: 0,
+                  y: 0,
+                  width: 100,
+                  height: 100,
+                  order: 0,
+                },
+              ]);
+
+            const x = Math.min(
+              Math.max(
+                frame.config.x + action.payload.x,
+                // Allow frame going out of the workspace container, but not entirely
+                -(frame.config.width * 0.9)
+              ),
+              99
+            );
+            const y = Math.min(
+              Math.max(frame.config.y + action.payload.y, 0),
+              frame.config.y + frame.config.height
+            );
+            const d = action.payload.pxSize * 10;
+
             frame.config = {
               ...frame.config,
-              x: Math.min(
-                Math.max(frame.config.x + action.payload.x, 0),
-                frame.config.x + frame.config.width
-              ),
-              y: Math.min(
-                Math.max(frame.config.y + action.payload.y, 0),
-                frame.config.y + frame.config.height
+              ...snapFramePosition(
+                { ...frame.config, x, y },
+                otherConfigs,
+                d,
+                "both"
               ),
             };
+          })
+        : state;
+    }
+    case "ResizeFrame": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload.frameId]
+            );
+            if (!workspace || workspace.isFullscreen) return;
+
+            const frame = workspace.frames[action.payload.frameId];
+            if (!frame) return;
+
+            const otherConfigs = Object.values(workspace.frames)
+              .filter((f) => f.id !== frame.id)
+              .map((f) => ({ ...f.config }))
+              .concat([
+                {
+                  x: 0,
+                  y: 0,
+                  width: 100,
+                  height: 100,
+                  order: 0,
+                },
+              ]);
+
+            frame.config = resizeFrame(
+              frame.config,
+              otherConfigs,
+              action.payload.width,
+              action.payload.height,
+              action.payload.direction,
+              action.payload.pxSize * 10
+            );
+          })
+        : state;
+    }
+    case "Maximize": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload]
+            );
+            if (!workspace) return;
+
+            draft.payload.workspaces[workspace.id] = maximize(
+              workspace,
+              action.payload
+            );
+          })
+        : state;
+    }
+    case "Minimize": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload]
+            );
+            if (!workspace) return;
+
+            draft.payload.workspaces[workspace.id] = minimize(workspace);
+          })
+        : state;
+    }
+    case "ToggleFullScreen": {
+      return isReady(state)
+        ? produce(state, (draft) => {
+            const workspace = Object.values(draft.payload.workspaces).find(
+              (w) => w.frames[action.payload]
+            );
+            if (!workspace) return;
+
+            draft.payload.workspaces[workspace.id] = workspace.isFullscreen
+              ? minimize(workspace)
+              : maximize(workspace, action.payload);
           })
         : state;
     }

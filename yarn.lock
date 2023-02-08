@@ -3108,6 +3108,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"re-reselect@npm:^4.0.1":
+  version: 4.0.1
+  resolution: "re-reselect@npm:4.0.1"
+  peerDependencies:
+    reselect: ">1.0.0"
+  checksum: 6acb302c5a3d7aa44d32b329babaeed73a5d78eb832e2020d4f5f9515d38d3bebae5d0cfe853e5ceb2682abd8cdfe41b51ab76a997c18fcc8f1cfa4ab81ff58e
+  languageName: node
+  linkType: hard
+
 "react-dnd-html5-backend@npm:^16.0.1":
   version: 16.0.1
   resolution: "react-dnd-html5-backend@npm:16.0.1"
@@ -4148,6 +4157,7 @@ __metadata:
     lodash: ^4.17.21
     postcss: ^8.4.21
     prettier: ^2.8.3
+    re-reselect: ^4.0.1
     react: ^18.2.0
     react-dnd: ^16.0.1
     react-dnd-html5-backend: ^16.0.1

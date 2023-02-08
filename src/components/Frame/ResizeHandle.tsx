@@ -14,6 +14,7 @@ export const ResizeHandle = memo(({ id, direction }: ResizeHandleProps) => {
   const [, drag, preview] = useDrag({
     type: ItemType.Resize,
     item: {
+      type: ItemType.Resize,
       frameId: id,
       direction,
     },

@@ -4,6 +4,9 @@ import { isReady, State } from "./types/State";
 import { Widget, WidgetId } from "./types/Widget";
 import { WidgetType } from "./types/WidgetType";
 import { createSelector } from "reselect";
+import { getFrames, getFrameWidgets, isWidgetActive } from "./types/Workspace";
+import { shallowEqual } from "react-redux";
+import createCachedSelector from "re-reselect";
 
 export const selectWorkspaceFramesIds = createSelector(
   [
@@ -11,15 +14,17 @@ export const selectWorkspaceFramesIds = createSelector(
     (state, workspaceId: WorkspaceId) => workspaceId,
   ],
   (workspaces, workspaceId): FrameId[] => {
-    if (!workspaces) {
-      return [];
-    }
-    const workspace = workspaces[workspaceId];
-    if (!workspace) {
-      return [];
-    }
+    if (!workspaces) return [];
 
-    return Object.values(workspace.frames).map(({ id }) => id);
+    const workspace = workspaces[workspaceId];
+    if (!workspace) return [];
+
+    return getFrames(workspace).map((frame) => frame.id);
+  },
+  {
+    memoizeOptions: {
+      resultEqualityCheck: shallowEqual,
+    },
   }
 );
 
@@ -40,6 +45,11 @@ export const selectFrameConfig = createSelector(
     }
 
     return workspace.frames[id].config;
+  },
+  {
+    memoizeOptions: {
+      resultEqualityCheck: shallowEqual,
+    },
   }
 );
 
@@ -84,11 +94,7 @@ export const selectIsActiveWidget = createSelector(
     const workspace = Object.values(workspaces).find((w) => w.widgets[id]);
     if (!workspace) return false;
 
-    const widget = workspace.widgets[id];
-    if (!widget || !widget.frameId || !workspace.frames[widget.frameId])
-      return false;
-
-    return workspace.frames[widget.frameId].activeWidget === id;
+    return isWidgetActive(workspace, id);
   }
 );
 
@@ -110,26 +116,21 @@ export const selectWidgetType = createSelector(
   }
 );
 
-export const selectFrameWidgetsIds = createSelector(
-  [
-    (s: State) => (isReady(s) ? s.payload.workspaces : undefined),
-    (s: State, frameId: FrameId) => frameId,
-  ],
-  (workspaces, frameId): WidgetId[] => {
-    if (!workspaces) {
-      return [];
-    }
+export const selectFrameWidgetsIds = createCachedSelector(
+  (s: State, frameId: FrameId) => {
+    if (!isReady(s)) return [];
 
-    const workspace = Object.values(workspaces).find((w) => w.frames[frameId]);
+    const workspace = Object.values(s.payload.workspaces).find(
+      (w) => w.frames[frameId]
+    );
     if (!workspace) return [];
 
-    return (
-      Object.values(workspace.widgets)
-        .filter((w): w is Widget => !!w && w.frameId === frameId)
-        .map((w) => w.id) ?? []
-    );
-  }
-);
+    return getFrameWidgets(workspace, frameId);
+  },
+  (widgets): WidgetId[] => widgets.map((widget) => widget.id)
+)({
+  keySelector: (_, frameId) => frameId,
+});
 
 export const selectTabOrder = createSelector(
   [
@@ -150,4 +151,26 @@ export const selectTabOrder = createSelector(
 
     return order ? Math.trunc(order * 1000000000) : undefined;
   }
+);
+
+export const selectFrameWorkspaceId = createSelector(
+  [
+    (s: State) => (isReady(s) ? s.payload.workspaces : undefined),
+    (s: State, frameId: FrameId) => frameId,
+  ],
+  (workspaces, frameId): WorkspaceId | undefined =>
+    Object.values(workspaces ?? {}).find((w) => w.frames[frameId])?.id
+);
+
+export const selectIsFullScreen = createSelector(
+  [
+    (s: State) => (isReady(s) ? s.payload.workspaces : undefined),
+    (s: State, id: WorkspaceId) => id,
+  ],
+  (workspaces, id): boolean => workspaces?.[id].isFullscreen ?? false
+);
+
+export const selectWidgetTypes = createSelector(
+  (s: State) => s.payload.widgetTypes,
+  (types) => types
 );

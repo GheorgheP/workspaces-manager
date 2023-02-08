@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useDrag, useDrop } from "react-dnd";
 import { WidgetId } from "../../store/types/Widget";
 import { ItemType } from "../types";
-import { moveWidget } from "../../store/types/Actions";
+import { moveWidget, toggleFullScreen } from "../../store/types/Actions";
 import { getEmptyImage } from "react-dnd-html5-backend";
 import { FrameId } from "../../store/types/Frame";
 
@@ -54,6 +54,7 @@ export function DragHandle({ id }: DragHandleProps) {
         "cursor-grabbing": isDragging,
       })}
       ref={dragHandleRef}
+      onDoubleClick={() => dispatch(toggleFullScreen(id))}
     />
   );
 }
